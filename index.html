@@ -1,0 +1,2770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REEL — Your Cinematic Universe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── CSS Custom Properties: mood-reactive theming ── */
+    :root {
+      --c-bg: #0a0a0f;
+      --c-surface: #12121a;
+      --c-surface2: #1a1a26;
+      --c-border: rgba(255,255,255,0.07);
+      --c-text: #f0eefc;
+      --c-muted: rgba(240,238,252,0.45);
+      --c-accent: #8b7cf8;
+      --c-accent2: #f28bca;
+      --c-glow: rgba(139,124,248,0.15);
+      --font-display: 'Playfair Display', serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius: 16px;
+      --radius-sm: 8px;
+      --transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Mood-based accent shifts (applied to body via JS) */
+    body[data-mood="chill"]       { --c-accent:#6ec6f5; --c-accent2:#a8e6cf; --c-glow:rgba(110,198,245,0.12); }
+    body[data-mood="hype"]        { --c-accent:#ff6b35; --c-accent2:#ffd166; --c-glow:rgba(255,107,53,0.15); }
+    body[data-mood="mind-blowing"]{ --c-accent:#c77dff; --c-accent2:#f72585; --c-glow:rgba(199,125,255,0.18); }
+    body[data-mood="sad"]         { --c-accent:#74b3ce; --c-accent2:#8ecae6; --c-glow:rgba(116,179,206,0.12); }
+    body[data-mood="cozy"]        { --c-accent:#e9c46a; --c-accent2:#f4a261; --c-glow:rgba(233,196,106,0.14); }
+    body[data-mood="scared"]      { --c-accent:#e63946; --c-accent2:#ff6b6b; --c-glow:rgba(230,57,70,0.15); }
+    body[data-mood="romantic"]    { --c-accent:#f28bca; --c-accent2:#ffb3d1; --c-glow:rgba(242,139,202,0.15); }
+    body[data-mood="late-night"]  { --c-accent:#9d4edd; --c-accent2:#5c4033; --c-glow:rgba(157,78,221,0.2); }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--c-bg);
+      color: var(--c-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: --c-accent 0.6s ease, --c-accent2 0.6s ease, background-color 0.6s ease;
+    }
+
+    /* Animated noise texture background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* Radial glow that shifts with mood */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      right: -10%;
+      width: 70vw;
+      height: 70vw;
+      background: radial-gradient(circle, var(--c-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transition: background 1s ease;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    /* ── Typography ── */
+    h1, h2, h3 { font-family: var(--font-display); }
+
+    /* ── Layout ── */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      border-right: 1px solid var(--c-border);
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(20px);
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 900;
+      font-style: italic;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-sub {
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      margin-top: -4px;
+    }
+
+    .nav-section label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      display: block;
+      margin-bottom: 0.75rem;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 400;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--c-text); }
+    .nav-btn.active { background: var(--c-glow); color: var(--c-accent); font-weight: 500; border: 1px solid rgba(255,255,255,0.07); }
+    .nav-btn .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+
+    /* Personality badge in sidebar */
+    .personality-badge {
+      margin-top: auto;
+      padding: 1rem;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+    }
+    .personality-badge .label { color: var(--c-muted); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+    .personality-badge .type { font-family: var(--font-display); font-style: italic; font-size: 1.1rem; color: var(--c-accent); }
+    .personality-badge .desc { color: var(--c-muted); font-size: 0.75rem; margin-top: 4px; line-height: 1.5; }
+
+    /* ── Main Content ── */
+    .main { padding: 2.5rem; overflow-y: auto; }
+
+    /* ── Page headers ── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+    }
+    .page-title { font-size: 2.2rem; font-weight: 700; line-height: 1.1; }
+    .page-title span { color: var(--c-accent); }
+    .page-subtitle { color: var(--c-muted); font-size: 0.9rem; margin-top: 6px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 100px;
+      border: 1px solid var(--c-border);
+      background: transparent;
+      color: var(--c-text);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--c-accent);
+      border-color: var(--c-accent);
+      color: #0a0a0f;
+      font-weight: 600;
+    }
+    .btn-primary:hover { opacity: 0.9; box-shadow: 0 8px 20px var(--c-glow); }
+
+    .btn-oracle {
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      border: none;
+      color: #0a0a0f;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 14px 28px;
+      font-family: var(--font-display);
+      font-style: italic;
+      letter-spacing: 0.02em;
+    }
+    .btn-oracle:hover { box-shadow: 0 12px 40px var(--c-glow); transform: translateY(-2px); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      transition: border-color 0.3s ease, transform 0.2s ease;
+    }
+    .card:hover { border-color: rgba(255,255,255,0.12); }
+
+    /* ── Show/Movie Cards in grid ── */
+    .content-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .content-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .content-card:hover { transform: translateY(-4px); border-color: var(--c-accent); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+    .content-card:hover .card-overlay { opacity: 1; }
+
+    .card-poster {
+      height: 160px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-emoji-poster {
+      font-size: 4rem;
+      user-select: none;
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(10,10,15,0.9) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .card-body { padding: 1.1rem; }
+    .card-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; line-height: 1.2; }
+    .card-meta { font-size: 0.75rem; color: var(--c-muted); display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .card-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--c-muted); }
+
+    .mood-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .mood-tag {
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--c-border);
+      color: var(--c-accent);
+      background: var(--c-glow);
+    }
+
+    /* Vibe score display */
+    .vibe-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .vibe-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .vibe-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, var(--c-accent), var(--c-accent2));
+      transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .vibe-score { font-family: var(--font-mono); font-size: 0.75rem; color: var(--c-accent); }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--c-accent), var(--c-accent2));
+    }
+    .stat-label { font-size: 0.7rem; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-top: 6px; color: var(--c-text); }
+    .stat-sub { font-size: 0.75rem; color: var(--c-muted); margin-top: 2px; }
+
+    /* ── Add Content Modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--c-surface);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: calc(var(--radius) * 1.5);
+      padding: 2rem;
+      width: 90%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.96); } to { opacity: 1; transform: none; } }
+
+    .modal h2 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--c-muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      color: var(--c-text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .form-input:focus { border-color: var(--c-accent); }
+    .form-input::placeholder { color: var(--c-muted); }
+
+    select.form-input option { background: #1a1a26; }
+
+    /* ── Mood Wheel ── */
+    .mood-wheel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mood-chip {
+      padding: 8px 4px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--c-border);
+      background: transparent;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .mood-chip .emoji { font-size: 1.4rem; }
+    .mood-chip:hover { border-color: var(--c-accent); color: var(--c-accent); }
+    .mood-chip.selected { background: var(--c-glow); border-color: var(--c-accent); color: var(--c-accent); font-weight: 600; }
+
+    /* ── Vibe Sliders (custom rating) ── */
+    .vibe-sliders { display: flex; flex-direction: column; gap: 12px; }
+    .vibe-row { display: flex; align-items: center; gap: 12px; }
+    .vibe-label { font-size: 0.8rem; color: var(--c-muted); width: 90px; flex-shrink: 0; }
+    .vibe-input {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 100px;
+      outline: none;
+      cursor: pointer;
+    }
+    .vibe-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--c-accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--c-glow);
+      transition: transform 0.2s ease;
+    }
+    .vibe-input::-webkit-slider-thumb:hover { transform: scale(1.3); }
+    .vibe-val { font-family: var(--font-mono); font-size: 0.75rem; color: var(--c-accent); width: 24px; text-align: right; }
+
+    /* ── Oracle / Recommendation ── */
+    .oracle-section {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: calc(var(--radius) * 1.5);
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .oracle-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at top right, var(--c-glow) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .oracle-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-style: italic;
+      margin-bottom: 0.5rem;
+    }
+    .oracle-sub { color: var(--c-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+
+    .recs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .rec-card {
+      background: var(--c-surface2);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .rec-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.12); }
+    .rec-emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
+    .rec-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .rec-reason { font-size: 0.75rem; color: var(--c-muted); line-height: 1.5; }
+    .rec-badge {
+      position: absolute;
+      top: -8px; right: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 3px 10px;
+      border-radius: 100px;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      color: #0a0a0f;
+    }
+
+    /* ── Timeline / Journey ── */
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px; top: 0; bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, var(--c-accent), transparent);
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 1.5rem;
+      animation: fadeInLeft 0.4s ease;
+    }
+    @keyframes fadeInLeft { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+    .timeline-dot {
+      position: absolute;
+      left: -2rem;
+      top: 6px;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: var(--c-accent);
+      border: 2px solid var(--c-bg);
+      box-shadow: 0 0 10px var(--c-glow);
+    }
+    .timeline-date { font-size: 0.7rem; color: var(--c-muted); font-family: var(--font-mono); margin-bottom: 4px; }
+    .timeline-content {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.1rem;
+    }
+    .timeline-content:hover { border-color: rgba(255,255,255,0.12); }
+    .timeline-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; }
+    .timeline-meta { font-size: 0.75rem; color: var(--c-muted); margin-top: 4px; }
+
+    /* ── Personality Profile ── */
+    .personality-page { max-width: 700px; }
+    .dna-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 1.5rem 0;
+    }
+    .dna-row { display: flex; align-items: center; gap: 12px; }
+    .dna-label { font-size: 0.8rem; color: var(--c-muted); width: 120px; flex-shrink: 0; }
+    .dna-bar-wrap {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .dna-bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, var(--c-accent), var(--c-accent2));
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dna-pct { font-family: var(--font-mono); font-size: 0.75rem; color: var(--c-accent); width: 32px; text-align: right; }
+
+    .personality-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: calc(var(--radius) * 1.5);
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .personality-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center top, var(--c-glow), transparent 60%);
+    }
+    .personality-emoji { font-size: 3.5rem; margin-bottom: 0.5rem; position: relative; }
+    .personality-type {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-style: italic;
+      color: var(--c-accent);
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    .personality-desc { color: var(--c-muted); font-size: 0.9rem; line-height: 1.7; position: relative; }
+    .personality-quote {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--c-accent2);
+      border-left: 2px solid var(--c-accent2);
+      padding-left: 1rem;
+      margin: 1.5rem 0;
+      line-height: 1.6;
+    }
+
+    /* ── Watch Now Mood Selector ── */
+    .watch-now-panel {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: calc(var(--radius) * 1.5);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .big-mood-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 1.5rem 0;
+    }
+    .big-mood-chip {
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--c-border);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.25s ease;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+    }
+    .big-mood-chip .e { font-size: 1.8rem; }
+    .big-mood-chip:hover { transform: scale(1.05); border-color: var(--c-accent); color: var(--c-accent); background: var(--c-glow); }
+    .big-mood-chip.active { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-glow); transform: scale(1.05); font-weight: 600; }
+
+    /* ── Delete button ── */
+    .delete-btn {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,80,80,0.3);
+      background: transparent;
+      color: rgba(255,80,80,0.6);
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .delete-btn:hover { background: rgba(255,80,80,0.15); color: #ff5050; border-color: #ff5050; }
+
+    /* ── Toasts / Notifications ── */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 200;
+    }
+    .toast {
+      padding: 12px 20px;
+      background: var(--c-surface2);
+      border: 1px solid var(--c-accent);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      color: var(--c-text);
+      animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: none; } }
+
+    /* ── Section headers ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--c-border);
+    }
+
+    /* ── Filter chips ── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .filter-chip {
+      padding: 6px 14px;
+      border-radius: 100px;
+      border: 1px solid var(--c-border);
+      background: transparent;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .filter-chip:hover { border-color: var(--c-accent); color: var(--c-accent); }
+    .filter-chip.active { background: var(--c-glow); border-color: var(--c-accent); color: var(--c-accent); font-weight: 600; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    /* ── Auth Screen ── */
+    .auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    /* Second decorative glow bottom-left for auth screen */
+    .auth-screen::after {
+      content: '';
+      position: fixed;
+      bottom: -10%;
+      left: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(242,139,202,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: var(--c-surface);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: calc(var(--radius) * 1.5);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      overflow: hidden;
+      animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Subtle top-edge accent glow */
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--c-accent), var(--c-accent2), transparent);
+    }
+
+    .auth-logo {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 900;
+      font-style: italic;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .auth-tagline {
+      text-align: center;
+      color: var(--c-muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: rgba(255,255,255,0.04);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-tab {
+      padding: 8px;
+      border: none;
+      border-radius: calc(var(--radius-sm) - 2px);
+      background: transparent;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .auth-tab.active {
+      background: var(--c-surface2);
+      color: var(--c-text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .auth-input-wrap {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .auth-input-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--c-muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .auth-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      color: var(--c-text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .auth-input:focus {
+      border-color: var(--c-accent);
+      box-shadow: 0 0 0 3px var(--c-glow);
+    }
+    .auth-input::placeholder { color: var(--c-muted); }
+    .auth-input.error { border-color: rgba(230,57,70,0.6); }
+
+    .auth-error {
+      font-size: 0.8rem;
+      color: #e63946;
+      margin-top: -6px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .auth-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #0a0a0f;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    .auth-submit:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 8px 24px var(--c-glow); }
+    .auth-submit:active { transform: scale(0.98); }
+    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 1.25rem 0;
+      color: var(--c-muted);
+      font-size: 0.75rem;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--c-border);
+    }
+
+    /* User avatar in sidebar */
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-sm);
+    }
+    .user-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #0a0a0f;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email { font-size: 0.65rem; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sign-out-btn {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--c-border);
+      background: transparent;
+      color: var(--c-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .sign-out-btn:hover { border-color: #e63946; color: #e63946; background: rgba(230,57,70,0.1); }
+
+    /* Spinner for oracle */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--c-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Browse Page ── */
+    .browse-search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    .browse-search-input {
+      flex: 1;
+      padding: 12px 18px 12px 44px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 100px;
+      color: var(--c-text);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .browse-search-input:focus { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-glow); }
+    .browse-search-input::placeholder { color: var(--c-muted); }
+    .browse-search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--c-muted);
+      font-size: 1rem;
+      pointer-events: none;
+    }
+
+    /* TMDB poster card */
+    .tmdb-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1.1rem;
+    }
+    .tmdb-card {
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      transition: all 0.22s ease;
+      position: relative;
+    }
+    .tmdb-card:hover { transform: translateY(-5px) scale(1.01); border-color: var(--c-accent); box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+    .tmdb-card:hover .tmdb-card-hover { opacity: 1; }
+    .tmdb-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      display: block;
+      background: var(--c-surface2);
+    }
+    .tmdb-poster-placeholder {
+      width: 100%;
+      aspect-ratio: 2/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--c-surface2);
+      font-size: 3rem;
+      color: var(--c-muted);
+    }
+    .tmdb-card-body { padding: 0.7rem 0.8rem 0.9rem; }
+    .tmdb-card-title { font-size: 0.82rem; font-weight: 600; line-height: 1.3; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tmdb-card-meta { font-size: 0.7rem; color: var(--c-muted); display: flex; align-items: center; gap: 6px; }
+    .tmdb-rating { color: #ffd166; font-weight: 600; }
+
+    /* Hover overlay on TMDB card */
+    .tmdb-card-hover {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(10,10,15,0.96) 0%, rgba(10,10,15,0.4) 50%, transparent 100%);
+      display: flex;
+      align-items: flex-end;
+      padding: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .tmdb-add-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #0a0a0f;
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .tmdb-add-btn:hover { opacity: 0.9; }
+
+    /* Already-watched badge on TMDB card */
+    .watched-badge {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-accent2));
+      color: #0a0a0f;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 100px;
+    }
+
+    /* Browse category tabs */
+    .browse-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .browse-tab {
+      padding: 7px 16px;
+      border-radius: 100px;
+      border: 1px solid var(--c-border);
+      background: transparent;
+      color: var(--c-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .browse-tab:hover { border-color: var(--c-accent); color: var(--c-accent); }
+    .browse-tab.active { background: var(--c-glow); border-color: var(--c-accent); color: var(--c-accent); font-weight: 600; }
+
+    /* Rate & Add modal — compact */
+    .rate-modal-poster {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-start;
+    }
+    .rate-modal-img {
+      width: 90px;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+    .rate-modal-img-placeholder {
+      width: 90px;
+      aspect-ratio: 2/3;
+      border-radius: var(--radius-sm);
+      background: var(--c-surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      flex-shrink: 0;
+    }
+    .rate-modal-info h3 { font-family: var(--font-display); font-size: 1.2rem; font-style: italic; margin-bottom: 4px; }
+    .rate-modal-info p { font-size: 0.78rem; color: var(--c-muted); line-height: 1.6; margin-top: 4px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .recs-grid { grid-template-columns: repeat(2, 1fr); }
+      .big-mood-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ─────────────────────────────────────────────
+    // CONSTANTS & MOOD CONFIG
+    // ─────────────────────────────────────────────
+    const MOODS = [
+      { id: 'chill',        emoji: '🌊', label: 'Chill',        desc: 'relaxed vibes' },
+      { id: 'hype',         emoji: '⚡', label: 'Hype',         desc: 'pure energy' },
+      { id: 'mind-blowing', emoji: '🌀', label: 'Mind-Blowing', desc: 'brain melted' },
+      { id: 'sad',          emoji: '🌧', label: 'Sad',          desc: 'feel it all' },
+      { id: 'cozy',         emoji: '🕯', label: 'Cozy',         desc: 'warm & snug' },
+      { id: 'scared',       emoji: '👁', label: 'Scared',       desc: 'lights on pls' },
+      { id: 'romantic',     emoji: '🌹', label: 'Romantic',     desc: 'heart things' },
+      { id: 'late-night',   emoji: '🌙', label: 'Late-Night',   desc: '2am rabbit hole' },
+    ];
+
+    const GENRES = ['Drama', 'Comedy', 'Thriller', 'Sci-Fi', 'Horror', 'Romance', 'Action', 'Documentary', 'Animation', 'Fantasy'];
+    const TYPES = ['Movie', 'Series', 'Mini-Series', 'Documentary'];
+
+    // Emoji-based poster map by genre
+    const GENRE_EMOJI = {
+      Drama: '🎭', Comedy: '😂', Thriller: '🔪', 'Sci-Fi': '🚀',
+      Horror: '👻', Romance: '💕', Action: '💥', Documentary: '🎬',
+      Animation: '✨', Fantasy: '🧙', Default: '🎞'
+    };
+
+    // Mood-to-genre affinity mapping (used in recommendation logic)
+    const MOOD_GENRE_AFFINITY = {
+      'chill':        ['Comedy', 'Animation', 'Documentary'],
+      'hype':         ['Action', 'Thriller', 'Sci-Fi'],
+      'mind-blowing': ['Sci-Fi', 'Thriller', 'Drama'],
+      'sad':          ['Drama', 'Romance'],
+      'cozy':         ['Comedy', 'Animation', 'Romance'],
+      'scared':       ['Horror', 'Thriller'],
+      'romantic':     ['Romance', 'Drama', 'Comedy'],
+      'late-night':   ['Thriller', 'Horror', 'Sci-Fi', 'Drama'],
+    };
+
+    // ─────────────────────────────────────────────
+    // AUTH ENGINE
+    // Users stored in localStorage as: reel-users → { [email]: { id, email, name, passwordHash } }
+    // Session stored as: reel-session → { userId, email, name }
+    // Per-user data stored as: reel-data:{userId} → [...items]
+    //
+    // Password hashing: a simple djb2-style hash (NOT cryptographically secure —
+    // this is a local/simulated auth system. For production, use bcrypt on a server.)
+    // ─────────────────────────────────────────────
+
+    // Simple non-cryptographic hash — good enough for local storage simulation
+    function hashPassword(password) {
+      let hash = 5381;
+      for (let i = 0; i < password.length; i++) {
+        hash = ((hash << 5) + hash) ^ password.charCodeAt(i);
+        hash = hash >>> 0; // keep as unsigned 32-bit
+      }
+      return hash.toString(16);
+    }
+
+    // Generate initials from name or email
+    function getInitials(name, email) {
+      if (name && name.trim()) {
+        const parts = name.trim().split(' ');
+        return parts.length >= 2
+          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+          : parts[0].slice(0, 2).toUpperCase();
+      }
+      return email.slice(0, 2).toUpperCase();
+    }
+
+    // Load all registered users from localStorage
+    function loadUsers() {
+      try { return JSON.parse(localStorage.getItem('reel-users') || '{}'); }
+      catch { return {}; }
+    }
+
+    // Save users registry
+    function saveUsers(users) {
+      localStorage.setItem('reel-users', JSON.stringify(users));
+    }
+
+    // Register a new user — returns { ok, error, user }
+    function registerUser(email, password, name) {
+      const users = loadUsers();
+      const key = email.toLowerCase().trim();
+      if (!key || !password) return { ok: false, error: 'Email and password are required.' };
+      if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
+      if (users[key]) return { ok: false, error: 'An account with this email already exists.' };
+      const user = { id: 'u_' + Date.now(), email: key, name: name.trim() || key.split('@')[0], passwordHash: hashPassword(password) };
+      users[key] = user;
+      saveUsers(users);
+      return { ok: true, user };
+    }
+
+    // Sign in — returns { ok, error, user }
+    function signInUser(email, password) {
+      const users = loadUsers();
+      const key = email.toLowerCase().trim();
+      const user = users[key];
+      if (!user) return { ok: false, error: 'No account found with this email.' };
+      if (user.passwordHash !== hashPassword(password)) return { ok: false, error: 'Incorrect password.' };
+      return { ok: true, user };
+    }
+
+    // Session helpers — stored in sessionStorage so signing out on tab close is automatic
+    function saveSession(user) {
+      sessionStorage.setItem('reel-session', JSON.stringify({ userId: user.id, email: user.email, name: user.name }));
+    }
+    function loadSession() {
+      try { return JSON.parse(sessionStorage.getItem('reel-session') || 'null'); }
+      catch { return null; }
+    }
+    function clearSession() {
+      sessionStorage.removeItem('reel-session');
+    }
+
+    // Per-user data key
+    function userDataKey(userId) { return `reel-data:${userId}`; }
+
+    // ─────────────────────────────────────────────
+    // AUTH SCREEN COMPONENT
+    // ─────────────────────────────────────────────
+    function AuthScreen({ onAuth }) {
+      const [tab, setTab] = useState('signin'); // 'signin' | 'register'
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [name, setName] = useState('');
+      const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const handleSubmit = () => {
+        setError('');
+        if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
+        setLoading(true);
+        // Tiny timeout for the "loading" feel
+        setTimeout(() => {
+          if (tab === 'register') {
+            const result = registerUser(email, password, name);
+            if (!result.ok) { setError(result.error); setLoading(false); return; }
+            saveSession(result.user);
+            onAuth(result.user);
+          } else {
+            const result = signInUser(email, password);
+            if (!result.ok) { setError(result.error); setLoading(false); return; }
+            saveSession(result.user);
+            onAuth(result.user);
+          }
+          setLoading(false);
+        }, 400);
+      };
+
+      // Allow Enter key to submit
+      const handleKeyDown = (e) => { if (e.key === 'Enter') handleSubmit(); };
+
+      return (
+        <div className="auth-screen">
+          <div className="auth-card">
+            <div className="auth-logo">REEL</div>
+            <div className="auth-tagline">Your Cinematic Universe</div>
+
+            <div className="auth-tabs">
+              <button className={`auth-tab ${tab === 'signin' ? 'active' : ''}`} onClick={() => { setTab('signin'); setError(''); }}>
+                Sign In
+              </button>
+              <button className={`auth-tab ${tab === 'register' ? 'active' : ''}`} onClick={() => { setTab('register'); setError(''); }}>
+                Create Account
+              </button>
+            </div>
+
+            {tab === 'register' && (
+              <div className="auth-input-wrap">
+                <label className="auth-input-label">Your Name</label>
+                <input
+                  className="auth-input"
+                  type="text"
+                  placeholder="How should we call you?"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+            )}
+
+            <div className="auth-input-wrap">
+              <label className="auth-input-label">Email</label>
+              <input
+                className={`auth-input ${error && !email ? 'error' : ''}`}
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+
+            <div className="auth-input-wrap">
+              <label className="auth-input-label">Password {tab === 'register' && <span style={{color:'var(--c-muted)', fontWeight:400, textTransform:'none', letterSpacing:0}}>(min. 6 characters)</span>}</label>
+              <input
+                className={`auth-input ${error && !password ? 'error' : ''}`}
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+
+            {error && <div className="auth-error">⚠ {error}</div>}
+
+            <button className="auth-submit" onClick={handleSubmit} disabled={loading}>
+              {loading ? '...' : tab === 'signin' ? 'Enter the Universe →' : 'Create My Universe →'}
+            </button>
+
+            <div className="auth-divider">stored locally in your browser</div>
+            <p style={{ fontSize:'0.72rem', color:'var(--c-muted)', textAlign:'center', lineHeight:1.6 }}>
+              Your data lives in <code style={{fontFamily:'var(--font-mono)', background:'rgba(255,255,255,0.06)', padding:'1px 5px', borderRadius:'3px'}}>localStorage</code> on this device. Each account has its own private watchlist.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // New accounts start empty — no dummy data
+    const INITIAL_DATA = [];
+
+
+    // ─────────────────────────────────────────────
+    // RECOMMENDATION ENGINE — powered by TMDB
+    //
+    // Strategy:
+    //  1. Map the current mood to TMDB genre IDs
+    //  2. Fetch discover results for those genres (movies + TV)
+    //  3. Filter out anything the user already watched
+    //  4. Score remaining candidates:
+    //       +40  mood-genre affinity
+    //       +30  genre rated highly by user
+    //       -20  genre over-represented in history (variety)
+    //       +15  TMDB rating quality signal
+    //       +12  recency bonus
+    //       ± 8  random jitter for freshness
+    //  5. Return top N sorted by score
+    // ─────────────────────────────────────────────
+
+    // Mood → TMDB genre IDs
+    const MOOD_TMDB_GENRES = {
+      'chill':        [35, 16, 99],
+      'hype':         [28, 53, 878],
+      'mind-blowing': [878, 53, 9648],
+      'sad':          [18, 10749],
+      'cozy':         [35, 16, 10749],
+      'scared':       [27, 53],
+      'romantic':     [10749, 18, 35],
+      'late-night':   [53, 27, 878, 9648],
+    };
+
+    async function fetchDiscoverForGenre(genreId, page, mediaType) {
+      const r = await fetch(
+        `${TMDB_BASE}/discover/${mediaType}?api_key=${TMDB_KEY}&with_genres=${genreId}&sort_by=popularity.desc&page=${page}&vote_count.gte=100`
+      );
+      const d = await r.json();
+      return (d.results || []).map(i => ({ ...i, media_type: mediaType }));
+    }
+
+    async function getRecommendations(watchedItems, currentMood, count = 3) {
+      const watchedTmdbIds = new Set(watchedItems.map(i => i.tmdbId).filter(Boolean));
+      const watchedTitles  = new Set(watchedItems.map(i => i.title.toLowerCase()));
+
+      const genreCount = {};
+      watchedItems.forEach(i => { genreCount[i.genre] = (genreCount[i.genre] || 0) + 1; });
+      const maxGenre = Math.max(...Object.values(genreCount), 1);
+
+      const genreAvgVibe = {};
+      Object.keys(genreCount).forEach(genre => {
+        const same = watchedItems.filter(i => i.genre === genre);
+        genreAvgVibe[genre] = same.reduce((s, i) => {
+          const v = i.vibes;
+          return s + (v.story + v.visuals + v.emotions + v.rewatchability) / 4;
+        }, 0) / same.length;
+      });
+
+      const genreIds = MOOD_TMDB_GENRES[currentMood] || MOOD_TMDB_GENRES['hype'];
+      const fetches = [];
+      genreIds.slice(0, 2).forEach(gId => {
+        fetches.push(fetchDiscoverForGenre(gId, 1, 'movie'));
+        fetches.push(fetchDiscoverForGenre(gId, 2, 'movie'));
+        fetches.push(fetchDiscoverForGenre(gId, 1, 'tv'));
+      });
+
+      const pages = await Promise.all(fetches);
+      const raw = pages.flat();
+
+      const seen = new Set();
+      const candidates = [];
+      for (const item of raw) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        const norm = normaliseTmdb(item);
+        if (watchedTmdbIds.has(norm.tmdbId)) continue;
+        if (watchedTitles.has(norm.title.toLowerCase())) continue;
+        candidates.push(norm);
+      }
+
+      const scored = candidates.map(c => {
+        let score = 0;
+        const affinityGenres = MOOD_GENRE_AFFINITY[currentMood] || [];
+        if (affinityGenres.includes(c.genre)) score += 40;
+        if (genreAvgVibe[c.genre]) score += (genreAvgVibe[c.genre] / 10) * 30;
+        const overrep = (genreCount[c.genre] || 0) / maxGenre;
+        score -= overrep * 20;
+        if (c.tmdbRating) score += Math.min((c.tmdbRating - 5) * 3, 15);
+        if (c.year) score += Math.min((c.year - 2015) * 1.5, 12);
+        score += Math.random() * 8;
+        return { ...c, score };
+      });
+
+      return scored.sort((a, b) => b.score - a.score).slice(0, count);
+    }
+
+
+    // ─────────────────────────────────────────────
+    // PERSONALITY ENGINE
+    // Derives a "watcher archetype" from watch history
+    // ─────────────────────────────────────────────
+    function derivePersonality(items) {
+      if (items.length === 0) return null;
+
+      // Count mood tags across all watched items
+      const moodTotals = {};
+      const genreTotals = {};
+      items.forEach(item => {
+        item.moods.forEach(m => { moodTotals[m] = (moodTotals[m] || 0) + 1; });
+        genreTotals[item.genre] = (genreTotals[item.genre] || 0) + 1;
+      });
+
+      const topMood = Object.entries(moodTotals).sort((a,b) => b[1]-a[1])[0]?.[0];
+      const topGenre = Object.entries(genreTotals).sort((a,b) => b[1]-a[1])[0]?.[0];
+      const avgEmotions = items.reduce((s, i) => s + i.vibes.emotions, 0) / items.length;
+      const avgStory = items.reduce((s, i) => s + i.vibes.story, 0) / items.length;
+
+      // Archetype logic: match patterns to fun personality types
+      if (topMood === 'mind-blowing' && topGenre === 'Sci-Fi') return {
+        emoji: '🌌', type: 'The Cosmic Overthinker',
+        desc: 'You chase films that rearrange your neurons. Every watch is a philosophical event.',
+        quote: '"Reality is just a consensus hallucination, and you\'re here for the chaos."',
+        tagline: 'You survive on plot twists and existential dread.',
+      };
+      if (topMood === 'sad' || (avgEmotions > 8.5)) return {
+        emoji: '🎭', type: 'The Emotional Cartographer',
+        desc: 'You map the full spectrum of human feeling through screen. Crying is cardio.',
+        quote: '"You rate every film by how wrecked you feel at the end credits."',
+        tagline: 'Tissues are your most-used accessory.',
+      };
+      if (topMood === 'hype' && avgStory > 8) return {
+        emoji: '⚡', type: 'The Story-Hungry Adrenaline Junkie',
+        desc: 'You need edge-of-seat tension AND emotional depth. Mediocre plots offend you personally.',
+        quote: '"If I\'m not gripping a cushion, is it even worth watching?"',
+        tagline: 'Your ideal film has both a twist and a cry.',
+      };
+      if (topMood === 'cozy' || topMood === 'chill') return {
+        emoji: '🕯', type: 'The Cozy Cinema Architect',
+        desc: 'You build the perfect viewing environment. Candles, blanket, tea — then press play.',
+        quote: '"The best films are the ones you rewatch on rainy Sundays forever."',
+        tagline: 'Your rewatchability scores are suspiciously high.',
+      };
+      if (topMood === 'late-night') return {
+        emoji: '🌙', type: 'The 3AM Rabbit-Hole Dweller',
+        desc: 'You start watching at 11pm and surface at 4am having consumed an entire season.',
+        quote: '"Just one more episode" is the last thing you said before blacking out.',
+        tagline: 'Sleep is a suggestion. Plot twists are non-negotiable.',
+      };
+      if (topGenre === 'Horror' || topMood === 'scared') return {
+        emoji: '👁', type: 'The Voluntary Trauma Enthusiast',
+        desc: 'You actively seek films that make you scared to walk to the bathroom.',
+        quote: '"If it doesn\'t haunt my dreams, was it even horror?"',
+        tagline: 'Your lights-off tolerance is deeply concerning.',
+      };
+      // Default
+      return {
+        emoji: '🎬', type: 'The Eclectic Cinephile',
+        desc: 'No genre owns you. No mood defines you. You are the chaos variable in every recommendation algorithm.',
+        quote: '"I\'ll watch anything as long as it\'s extraordinary."',
+        tagline: 'Algorithms fear you. You can\'t be predicted.',
+      };
+    }
+
+    // ─────────────────────────────────────────────
+    // COMPUTE VIBE SCORE (0-100) from vibe sliders
+    // ─────────────────────────────────────────────
+    function computeVibeScore(vibes) {
+      const weights = { story: 0.3, visuals: 0.2, emotions: 0.35, rewatchability: 0.15 };
+      return Math.round(
+        Object.entries(vibes).reduce((sum, [k, v]) => sum + v * (weights[k] || 0.25), 0) * 10
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // TOAST HOOK
+    // ─────────────────────────────────────────────
+    function useToasts() {
+      const [toasts, setToasts] = useState([]);
+      const addToast = useCallback((msg) => {
+        const id = Date.now();
+        setToasts(t => [...t, { id, msg }]);
+        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
+      }, []);
+      return { toasts, addToast };
+    }
+
+    // ─────────────────────────────────────────────
+    // ADD CONTENT MODAL
+    // ─────────────────────────────────────────────
+    function AddModal({ onClose, onAdd }) {
+      const [title, setTitle] = useState('');
+      const [type, setType] = useState('Movie');
+      const [genre, setGenre] = useState('Drama');
+      const [year, setYear] = useState(new Date().getFullYear());
+      const [vibes, setVibes] = useState({ story: 7, visuals: 7, emotions: 7, rewatchability: 7 });
+      const [selectedMoods, setSelectedMoods] = useState([]);
+      const [notes, setNotes] = useState('');
+
+      const toggleMood = (id) => {
+        setSelectedMoods(prev =>
+          prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+        );
+      };
+
+      const handleSubmit = () => {
+        if (!title.trim()) return;
+        onAdd({
+          id: Date.now(),
+          title: title.trim(),
+          type, genre,
+          year: parseInt(year),
+          vibes,
+          moods: selectedMoods,
+          notes,
+          dateWatched: new Date().toISOString().split('T')[0],
+        });
+        onClose();
+      };
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem' }}>
+              <h2 style={{ margin: 0, fontStyle:'italic' }}>Add to your Universe</h2>
+              <button className="btn" onClick={onClose} style={{ padding:'6px 12px', fontSize:'1rem' }}>✕</button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Title</label>
+              <input className="form-input" placeholder="What did you watch?" value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px' }}>
+              <div className="form-group">
+                <label className="form-label">Type</label>
+                <select className="form-input" value={type} onChange={e => setType(e.target.value)}>
+                  {TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Genre</label>
+                <select className="form-input" value={genre} onChange={e => setGenre(e.target.value)}>
+                  {GENRES.map(g => <option key={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Year</label>
+                <input className="form-input" type="number" value={year} min="1900" max="2025" onChange={e => setYear(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Vibe Sliders - the fun rating system */}
+            <div className="form-group">
+              <label className="form-label">Vibe Ratings</label>
+              <div className="vibe-sliders">
+                {Object.entries(vibes).map(([key, val]) => (
+                  <div className="vibe-row" key={key}>
+                    <span className="vibe-label">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                    <input
+                      type="range" min="1" max="10" step="1" value={val}
+                      className="vibe-input"
+                      onChange={e => setVibes(v => ({ ...v, [key]: parseInt(e.target.value) }))}
+                    />
+                    <span className="vibe-val">{val}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:'8px', fontSize:'0.75rem', color:'var(--c-accent)', fontFamily:'var(--font-mono)' }}>
+                Vibe Score: {computeVibeScore(vibes)}/100
+              </div>
+            </div>
+
+            {/* Mood Wheel */}
+            <div className="form-group">
+              <label className="form-label">How did it make you feel?</label>
+              <div className="mood-wheel">
+                {MOODS.map(m => (
+                  <button
+                    key={m.id}
+                    className={`mood-chip ${selectedMoods.includes(m.id) ? 'selected' : ''}`}
+                    onClick={() => toggleMood(m.id)}
+                  >
+                    <span className="emoji">{m.emoji}</span>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Your Take (optional)</label>
+              <textarea
+                className="form-input"
+                style={{ resize:'vertical', minHeight:'70px' }}
+                placeholder="Any thoughts, feelings, emotional damage..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </div>
+
+            <button className="btn btn-primary" style={{ width:'100%', justifyContent:'center' }} onClick={handleSubmit}>
+              ✦ Add to Universe
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // CONTENT CARD
+    // ─────────────────────────────────────────────
+    function ContentCard({ item, onDelete }) {
+      const score = computeVibeScore(item.vibes);
+      const emoji = GENRE_EMOJI[item.genre] || GENRE_EMOJI.Default;
+
+      return (
+        <div className="content-card">
+          <div className="card-poster" style={{ background:'var(--c-surface2)', padding:0 }}>
+            {item.poster
+              ? <img src={item.poster} alt={item.title} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+              : <span className="card-emoji-poster">{emoji}</span>
+            }
+            <div className="card-overlay" />
+          </div>
+          <div className="card-body">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px' }}>
+              <div className="card-title">{item.title}</div>
+              <button className="delete-btn" onClick={() => onDelete(item.id)} title="Remove">✕</button>
+            </div>
+            <div className="card-meta">
+              <span>{item.year}</span>
+              <span className="card-meta-dot" />
+              <span>{item.type}</span>
+              <span className="card-meta-dot" />
+              <span>{item.genre}</span>
+              {item.tmdbRating && <><span className="card-meta-dot" /><span style={{color:'#ffd166'}}>★ {item.tmdbRating}</span></>}
+            </div>
+            {/* Vibe bar */}
+            <div className="vibe-display">
+              <div className="vibe-bar">
+                <div className="vibe-fill" style={{ width: `${score}%` }} />
+              </div>
+              <span className="vibe-score">{score}</span>
+            </div>
+            {/* Mood tags */}
+            {item.moods.length > 0 && (
+              <div className="mood-tags">
+                {item.moods.slice(0,3).map(m => {
+                  const mood = MOODS.find(x => x.id === m);
+                  return <span key={m} className="mood-tag">{mood?.emoji} {mood?.label}</span>;
+                })}
+              </div>
+            )}
+            {item.notes && (
+              <p style={{ fontSize:'0.75rem', color:'var(--c-muted)', marginTop:'8px', fontStyle:'italic', lineHeight:1.5 }}>
+                "{item.notes}"
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGE: LIBRARY (merged with Timeline)
+    // Grid view = browse your collection spatially
+    // Timeline view = same data, chronological journey
+    // ─────────────────────────────────────────────
+    function LibraryPage({ items, onDelete, onAdd }) {
+      const [filter, setFilter] = useState('All');
+      const [view, setView] = useState('grid'); // 'grid' | 'timeline'
+      const filters = ['All', ...TYPES];
+
+      const filtered = (filter === 'All' ? items : items.filter(i => i.type === filter))
+        .sort((a, b) => new Date(b.dateWatched) - new Date(a.dateWatched));
+
+      // Group by month for timeline view
+      const grouped = {};
+      filtered.forEach(item => {
+        const key = item.dateWatched.slice(0, 7);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+      });
+
+      const formatDate = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      return (
+        <div>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">My <span>Watched</span></h1>
+              <p className="page-subtitle">{items.length} titles in your collection</p>
+            </div>
+            <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+              {/* View toggle */}
+              <div style={{ display:'flex', background:'rgba(255,255,255,0.04)', borderRadius:'var(--radius-sm)', padding:'3px', border:'1px solid var(--c-border)' }}>
+                <button
+                  onClick={() => setView('grid')}
+                  style={{ padding:'6px 12px', border:'none', borderRadius:'calc(var(--radius-sm) - 2px)', background: view==='grid' ? 'var(--c-surface2)' : 'transparent', color: view==='grid' ? 'var(--c-text)' : 'var(--c-muted)', cursor:'pointer', fontSize:'0.8rem', fontFamily:'var(--font-body)', transition:'all 0.2s' }}
+                >
+                  ⊞ Grid
+                </button>
+                <button
+                  onClick={() => setView('timeline')}
+                  style={{ padding:'6px 12px', border:'none', borderRadius:'calc(var(--radius-sm) - 2px)', background: view==='timeline' ? 'var(--c-surface2)' : 'transparent', color: view==='timeline' ? 'var(--c-text)' : 'var(--c-muted)', cursor:'pointer', fontSize:'0.8rem', fontFamily:'var(--font-body)', transition:'all 0.2s' }}
+                >
+                  ◉ Timeline
+                </button>
+              </div>
+              <button className="btn btn-primary" onClick={onAdd}>+ Add Title</button>
+            </div>
+          </div>
+
+          <div className="filter-bar">
+            {filters.map(f => (
+              <button key={f} className={`filter-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'4rem', color:'var(--c-muted)' }}>
+              <div style={{ fontSize:'3rem', marginBottom:'1rem' }}>🎬</div>
+              <p>Nothing here yet. Add something you've watched!</p>
+            </div>
+          ) : view === 'grid' ? (
+            // ── Grid view ──
+            <div className="content-grid">
+              {filtered.map(item => (
+                <ContentCard key={item.id} item={item} onDelete={onDelete} />
+              ))}
+            </div>
+          ) : (
+            // ── Timeline view ──
+            <div>
+              {Object.entries(grouped).map(([month, monthItems]) => {
+                const [yr, m] = month.split('-');
+                const monthName = new Date(yr, m - 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' });
+                return (
+                  <div key={month} style={{ marginBottom:'2.5rem' }}>
+                    <div className="section-label">{monthName}</div>
+                    <div className="timeline">
+                      {monthItems.map(item => {
+                        const score = computeVibeScore(item.vibes);
+                        const emoji = GENRE_EMOJI[item.genre] || GENRE_EMOJI.Default;
+                        return (
+                          <div className="timeline-item" key={item.id}>
+                            <div className="timeline-dot" />
+                            <div className="timeline-date">{formatDate(item.dateWatched)}</div>
+                            <div className="timeline-content">
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                                <div>
+                                  <span style={{ fontSize:'1.4rem', marginRight:'8px' }}>{emoji}</span>
+                                  <span className="timeline-title">{item.title}</span>
+                                </div>
+                                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
+                                  <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', color:'var(--c-accent)' }}>{score}/100</span>
+                                  <button className="delete-btn" onClick={() => onDelete(item.id)} title="Remove">✕</button>
+                                </div>
+                              </div>
+                              <div className="timeline-meta">{item.year} · {item.type} · {item.genre}</div>
+                              {item.moods.length > 0 && (
+                                <div className="mood-tags" style={{ marginTop:'8px' }}>
+                                  {item.moods.map(mid => {
+                                    const mood = MOODS.find(x => x.id === mid);
+                                    return <span key={mid} className="mood-tag">{mood?.emoji} {mood?.label}</span>;
+                                  })}
+                                </div>
+                              )}
+                              {item.notes && (
+                                <p style={{ fontSize:'0.8rem', color:'var(--c-muted)', marginTop:'8px', fontStyle:'italic', lineHeight:1.5 }}>
+                                  "{item.notes}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGE: DISCOVER (Oracle + Recommendations)
+    // ─────────────────────────────────────────────
+    function DiscoverPage({ items, onAdd }) {
+      const [currentMood, setCurrentMood] = useState('hype');
+      const [recs, setRecs] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [hasSearched, setHasSearched] = useState(false);
+      const [selectedItem, setSelectedItem] = useState(null);
+
+      // Apply mood to body for theme shift
+      useEffect(() => {
+        document.body.setAttribute('data-mood', currentMood);
+      }, [currentMood]);
+
+      // Now async — fetches real TMDB data
+      const handleOracle = async () => {
+        setLoading(true);
+        setHasSearched(false);
+        setRecs([]);
+        try {
+          const results = await getRecommendations(items, currentMood, 6);
+          setRecs(results);
+        } catch(e) {
+          console.error('Oracle fetch failed', e);
+        } finally {
+          setLoading(false);
+          setHasSearched(true);
+        }
+      };
+
+      const watchedIds = new Set(items.map(i => i.tmdbId).filter(Boolean));
+
+      return (
+        <div>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">What should I <span>watch?</span></h1>
+              <p className="page-subtitle">The Oracle reads your vibes</p>
+            </div>
+          </div>
+
+          <div className="watch-now-panel">
+            <h3 style={{ fontFamily:'var(--font-display)', fontStyle:'italic', fontSize:'1.2rem', marginBottom:'0.5rem' }}>
+              I'm in the mood for...
+            </h3>
+            <p style={{ fontSize:'0.85rem', color:'var(--c-muted)', marginBottom:'0' }}>
+              Pick your current vibe and let the Oracle find your next obsession
+            </p>
+
+            <div className="big-mood-grid">
+              {MOODS.map(m => (
+                <button
+                  key={m.id}
+                  className={`big-mood-chip ${currentMood === m.id ? 'active' : ''}`}
+                  onClick={() => setCurrentMood(m.id)}
+                >
+                  <span className="e">{m.emoji}</span>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ textAlign:'center' }}>
+              <button className="btn btn-oracle" onClick={handleOracle} disabled={loading}>
+                {loading
+                  ? <><div className="spinner" /> Consulting the Oracle...</>
+                  : '✦ Show Me What To Watch'
+                }
+              </button>
+            </div>
+          </div>
+
+          {hasSearched && recs.length > 0 && (
+            <div>
+              <div className="section-label">The Oracle speaks — for your {currentMood} mood</div>
+              {/* Real TMDB poster grid — same style as Browse */}
+              <div className="tmdb-grid">
+                {recs.map((rec, i) => {
+                  const isWatched = watchedIds.has(rec.tmdbId);
+                  return (
+                    <div className="tmdb-card" key={rec.tmdbId || rec.title} onClick={() => setSelectedItem(rec)}>
+                      {rec.poster
+                        ? <img src={rec.poster} alt={rec.title} className="tmdb-poster" loading="lazy" />
+                        : <div className="tmdb-poster-placeholder">{GENRE_EMOJI[rec.genre] || '🎞'}</div>
+                      }
+                      {i === 0 && <div className="watched-badge" style={{ background:'linear-gradient(135deg,#ff6b35,#ffd166)', color:'#0a0a0f' }}>Top Pick</div>}
+                      {isWatched && i !== 0 && <div className="watched-badge">✓ Watched</div>}
+                      <div className="tmdb-card-body">
+                        <div className="tmdb-card-title" title={rec.title}>{rec.title}</div>
+                        <div className="tmdb-card-meta">
+                          <span>{rec.year || '—'}</span>
+                          {rec.tmdbRating && <><span>·</span><span className="tmdb-rating">★ {rec.tmdbRating}</span></>}
+                        </div>
+                      </div>
+                      <div className="tmdb-card-hover">
+                        <button className="tmdb-add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(rec); }}>
+                          {isWatched ? '✓ Rate again' : '+ Add to Watched'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize:'0.75rem', color:'var(--c-muted)', textAlign:'center', marginTop:'1.5rem', fontStyle:'italic' }}>
+                Live from TMDB · scored by your {currentMood} mood, watch history & genre preferences
+              </p>
+            </div>
+          )}
+
+          {hasSearched && recs.length === 0 && (
+            <div style={{ textAlign:'center', padding:'2rem', color:'var(--c-muted)' }}>
+              <p>The Oracle came up empty. Check your connection or try a different mood.</p>
+            </div>
+          )}
+
+          {selectedItem && (
+            <RateModal
+              tmdbItem={selectedItem}
+              alreadyWatched={watchedIds.has(selectedItem.tmdbId)}
+              onClose={() => setSelectedItem(null)}
+              onAdd={(item) => { onAdd(item); setSelectedItem(null); }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGE: PERSONALITY PROFILE
+    // Evolving archetype based on what you watch
+    // ─────────────────────────────────────────────
+    function PersonalityPage({ items }) {
+      const profile = derivePersonality(items);
+
+      // Compute genre DNA percentages
+      const genreTotals = {};
+      items.forEach(i => { genreTotals[i.genre] = (genreTotals[i.genre] || 0) + 1; });
+      const topGenres = Object.entries(genreTotals).sort((a,b) => b[1]-a[1]).slice(0,6);
+      const maxCount = topGenres[0]?.[1] || 1;
+
+      // Compute mood spectrum
+      const moodTotals = {};
+      items.forEach(i => i.moods.forEach(m => { moodTotals[m] = (moodTotals[m] || 0) + 1; }));
+      const topMoods = Object.entries(moodTotals).sort((a,b) => b[1]-a[1]).slice(0, 5);
+      const maxMood = topMoods[0]?.[1] || 1;
+
+      // Fun stats
+      const avgScore = items.length > 0
+        ? Math.round(items.reduce((s,i) => s + computeVibeScore(i.vibes), 0) / items.length)
+        : 0;
+      const highestEmotions = items.reduce((best, i) => i.vibes.emotions > (best?.vibes?.emotions || 0) ? i : best, null);
+      const mostRewatchable = items.reduce((best, i) => i.vibes.rewatchability > (best?.vibes?.rewatchability || 0) ? i : best, null);
+
+      return (
+        <div className="personality-page">
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Your <span>Profile</span></h1>
+              <p className="page-subtitle">Who are you as a watcher?</p>
+            </div>
+          </div>
+
+          {!profile ? (
+            <div style={{ textAlign:'center', padding:'4rem', color:'var(--c-muted)' }}>
+              <div style={{ fontSize:'3rem', marginBottom:'1rem' }}>🔮</div>
+              <p>Watch more titles to unlock your personality profile!</p>
+            </div>
+          ) : (
+            <>
+              {/* Main archetype card */}
+              <div className="personality-card">
+                <div className="personality-emoji">{profile.emoji}</div>
+                <div className="personality-type">{profile.type}</div>
+                <p className="personality-desc">{profile.desc}</p>
+              </div>
+
+              <div className="personality-quote">{profile.quote}</div>
+              <p style={{ fontSize:'0.85rem', color:'var(--c-accent2)', marginBottom:'2rem', fontWeight:500 }}>
+                ✦ {profile.tagline}
+              </p>
+
+              {/* Genre DNA chart */}
+              {topGenres.length > 0 && (
+                <div style={{ marginBottom:'2rem' }}>
+                  <div className="section-label">Genre DNA</div>
+                  <div className="dna-chart">
+                    {topGenres.map(([genre, count]) => (
+                      <div className="dna-row" key={genre}>
+                        <span className="dna-label">{GENRE_EMOJI[genre]} {genre}</span>
+                        <div className="dna-bar-wrap">
+                          <div className="dna-bar-fill" style={{ width:`${Math.round((count/maxCount)*100)}%` }} />
+                        </div>
+                        <span className="dna-pct">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mood spectrum */}
+              {topMoods.length > 0 && (
+                <div style={{ marginBottom:'2rem' }}>
+                  <div className="section-label">Emotional Spectrum</div>
+                  <div className="dna-chart">
+                    {topMoods.map(([moodId, count]) => {
+                      const mood = MOODS.find(m => m.id === moodId);
+                      return (
+                        <div className="dna-row" key={moodId}>
+                          <span className="dna-label">{mood?.emoji} {mood?.label}</span>
+                          <div className="dna-bar-wrap">
+                            <div className="dna-bar-fill" style={{ width:`${Math.round((count/maxMood)*100)}%` }} />
+                          </div>
+                          <span className="dna-pct">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Fun stats */}
+              <div className="section-label">Fun Stats</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'2rem' }}>
+                <div className="card">
+                  <div style={{ fontSize:'1.8rem', marginBottom:'6px' }}>🏆</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--c-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Most Emotional Hit</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:'1rem', marginTop:'4px' }}>{highestEmotions?.title || '—'}</div>
+                  <div style={{ fontSize:'0.75rem', color:'var(--c-accent)', fontFamily:'var(--font-mono)' }}>Emotions: {highestEmotions?.vibes.emotions}/10</div>
+                </div>
+                <div className="card">
+                  <div style={{ fontSize:'1.8rem', marginBottom:'6px' }}>🔁</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--c-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Most Rewatchable</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:'1rem', marginTop:'4px' }}>{mostRewatchable?.title || '—'}</div>
+                  <div style={{ fontSize:'0.75rem', color:'var(--c-accent)', fontFamily:'var(--font-mono)' }}>Score: {mostRewatchable?.vibes.rewatchability}/10</div>
+                </div>
+                <div className="card">
+                  <div style={{ fontSize:'1.8rem', marginBottom:'6px' }}>📊</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--c-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Avg Vibe Score</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:'2rem', fontWeight:700, marginTop:'4px', color:'var(--c-accent)' }}>{avgScore}</div>
+                </div>
+                <div className="card">
+                  <div style={{ fontSize:'1.8rem', marginBottom:'6px' }}>🌍</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--c-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Titles Watched</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:'2rem', fontWeight:700, marginTop:'4px', color:'var(--c-accent)' }}>{items.length}</div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // TMDB API LAYER
+    // All real data: posters, titles, release dates,
+    // TMDB ratings, overviews, genres come from here.
+    // ─────────────────────────────────────────────
+    const TMDB_KEY = '65dbc26481cb7abc43777a913312e3c9';
+    const TMDB_BASE = 'https://api.themoviedb.org/3';
+    const TMDB_IMG = 'https://image.tmdb.org/t/p/w342'; // 342px wide poster
+
+    // Map TMDB genre IDs to our app's genre strings
+    const TMDB_GENRE_MAP = {
+      28:'Action', 12:'Action', 16:'Animation', 35:'Comedy', 80:'Thriller',
+      99:'Documentary', 18:'Drama', 10751:'Comedy', 14:'Fantasy', 36:'Drama',
+      27:'Horror', 10402:'Drama', 9648:'Thriller', 10749:'Romance', 878:'Sci-Fi',
+      10770:'Drama', 53:'Thriller', 10752:'Action', 37:'Drama',
+      // TV genres
+      10759:'Action', 10762:'Animation', 10763:'Documentary', 10764:'Drama',
+      10765:'Sci-Fi', 10766:'Drama', 10767:'Drama', 10768:'Drama',
+    };
+
+    // Convert TMDB media_type / known_for_department to our type
+    function tmdbToType(item) {
+      return item.media_type === 'tv' || item.first_air_date ? 'Series' : 'Movie';
+    }
+
+    // Pull the most relevant genre label from a TMDB genres array
+    function tmdbGenreLabel(genreIds) {
+      for (const id of (genreIds || [])) {
+        if (TMDB_GENRE_MAP[id]) return TMDB_GENRE_MAP[id];
+      }
+      return 'Drama';
+    }
+
+    // Normalise a raw TMDB result (from search or discover) into our card shape
+    function normaliseTmdb(item) {
+      const isTV = item.media_type === 'tv' || !!item.first_air_date;
+      return {
+        tmdbId:      item.id,
+        title:       item.title || item.name,
+        type:        isTV ? 'Series' : 'Movie',
+        genre:       tmdbGenreLabel(item.genre_ids),
+        year:        parseInt((item.release_date || item.first_air_date || '0').slice(0, 4)) || null,
+        poster:      item.poster_path ? TMDB_IMG + item.poster_path : null,
+        overview:    item.overview || '',
+        tmdbRating:  item.vote_average ? Math.round(item.vote_average * 10) / 10 : null,
+        voteCount:   item.vote_count || 0,
+      };
+    }
+
+    // Fetch trending (default browse)
+    async function fetchTrending(type = 'all') {
+      const r = await fetch(`${TMDB_BASE}/trending/${type}/week?api_key=${TMDB_KEY}`);
+      const d = await r.json();
+      return (d.results || []).map(normaliseTmdb);
+    }
+
+    // Fetch by category tab — accepts a page number (TMDB pages are 20 items each)
+    async function fetchCategory(category, page = 1) {
+      const endpoints = {
+        'Trending':        `/trending/all/week`,
+        'Top Movies':      `/movie/top_rated`,
+        'Top Series':      `/tv/top_rated`,
+        'New Movies':      `/movie/now_playing`,
+        'New Series':      `/tv/on_the_air`,
+        'Action':          `/discover/movie?with_genres=28`,
+        'Comedy':          `/discover/movie?with_genres=35`,
+        'Horror':          `/discover/movie?with_genres=27`,
+        'Sci-Fi':          `/discover/movie?with_genres=878`,
+        'Drama':           `/discover/tv?with_genres=18`,
+        'Documentary':     `/discover/movie?with_genres=99`,
+      };
+      const path = endpoints[category] || endpoints['Trending'];
+      const sep = path.includes('?') ? '&' : '?';
+      // All TMDB endpoints support &page= — Trending included
+      const pageParam = `&page=${page}`;
+      const r = await fetch(`${TMDB_BASE}${path}${sep}api_key=${TMDB_KEY}${pageParam}`);
+      const d = await r.json();
+      return { results: (d.results || []).map(normaliseTmdb), totalPages: d.total_pages || 1 };
+    }
+
+    // Search TMDB
+    async function searchTmdb(query) {
+      const r = await fetch(`${TMDB_BASE}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&include_adult=false`);
+      const d = await r.json();
+      return (d.results || [])
+        .filter(i => i.media_type !== 'person' && (i.title || i.name))
+        .map(normaliseTmdb);
+    }
+
+    // ─────────────────────────────────────────────
+    // RATE & ADD MODAL
+    // Shown after user clicks a TMDB card.
+    // All show data is pre-filled from TMDB —
+    // user only picks vibes + moods + optional note.
+    // ─────────────────────────────────────────────
+    function RateModal({ tmdbItem, onClose, onAdd, alreadyWatched }) {
+      const [vibes, setVibes] = useState({ story: 7, visuals: 7, emotions: 7, rewatchability: 7 });
+      const [selectedMoods, setSelectedMoods] = useState([]);
+      const [notes, setNotes] = useState('');
+
+      const toggleMood = id => setSelectedMoods(p => p.includes(id) ? p.filter(m => m !== id) : [...p, id]);
+
+      const handleAdd = () => {
+        onAdd({
+          id:          Date.now(),
+          tmdbId:      tmdbItem.tmdbId,
+          title:       tmdbItem.title,
+          type:        tmdbItem.type,
+          genre:       tmdbItem.genre,
+          year:        tmdbItem.year,
+          poster:      tmdbItem.poster,
+          tmdbRating:  tmdbItem.tmdbRating,
+          overview:    tmdbItem.overview,
+          vibes,
+          moods:       selectedMoods,
+          notes,
+          dateWatched: new Date().toISOString().split('T')[0],
+        });
+        onClose();
+      };
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
+              <h2 style={{ margin:0, fontStyle:'italic', fontSize:'1.3rem' }}>Rate it</h2>
+              <button className="btn" onClick={onClose} style={{ padding:'6px 12px', fontSize:'1rem' }}>✕</button>
+            </div>
+
+            {/* Show info from TMDB — read only */}
+            <div className="rate-modal-poster">
+              {tmdbItem.poster
+                ? <img src={tmdbItem.poster} alt={tmdbItem.title} className="rate-modal-img" />
+                : <div className="rate-modal-img-placeholder">{GENRE_EMOJI[tmdbItem.genre] || '🎞'}</div>
+              }
+              <div className="rate-modal-info">
+                <h3>{tmdbItem.title}</h3>
+                <div style={{ fontSize:'0.75rem', color:'var(--c-muted)', display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'4px' }}>
+                  <span>{tmdbItem.year}</span>
+                  <span>·</span>
+                  <span>{tmdbItem.type}</span>
+                  <span>·</span>
+                  <span>{tmdbItem.genre}</span>
+                  {tmdbItem.tmdbRating && <><span>·</span><span style={{color:'#ffd166'}}>★ {tmdbItem.tmdbRating}</span></>}
+                </div>
+                {tmdbItem.overview && (
+                  <p style={{ fontSize:'0.75rem', color:'var(--c-muted)', lineHeight:1.6, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
+                    {tmdbItem.overview}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {alreadyWatched && (
+              <div style={{ padding:'10px 14px', background:'rgba(255,107,53,0.1)', border:'1px solid rgba(255,107,53,0.3)', borderRadius:'var(--radius-sm)', fontSize:'0.8rem', color:'#ff9a6c', marginBottom:'1rem' }}>
+                ⚠ You've already logged this — adding again will create a duplicate.
+              </div>
+            )}
+
+            {/* Vibe sliders — the only user input for ratings */}
+            <div className="form-group">
+              <label className="form-label">Your Vibe Ratings</label>
+              <div className="vibe-sliders">
+                {Object.entries(vibes).map(([key, val]) => (
+                  <div className="vibe-row" key={key}>
+                    <span className="vibe-label">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                    <input type="range" min="1" max="10" step="1" value={val} className="vibe-input"
+                      onChange={e => setVibes(v => ({ ...v, [key]: parseInt(e.target.value) }))} />
+                    <span className="vibe-val">{val}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:'8px', fontSize:'0.75rem', color:'var(--c-accent)', fontFamily:'var(--font-mono)' }}>
+                Vibe Score: {computeVibeScore(vibes)}/100
+              </div>
+            </div>
+
+            {/* Mood wheel */}
+            <div className="form-group">
+              <label className="form-label">How did it make you feel?</label>
+              <div className="mood-wheel">
+                {MOODS.map(m => (
+                  <button key={m.id} className={`mood-chip ${selectedMoods.includes(m.id) ? 'selected' : ''}`} onClick={() => toggleMood(m.id)}>
+                    <span className="emoji">{m.emoji}</span>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Your Take (optional)</label>
+              <textarea className="form-input" style={{ resize:'vertical', minHeight:'60px' }}
+                placeholder="Any thoughts, feelings, emotional damage..."
+                value={notes} onChange={e => setNotes(e.target.value)} />
+            </div>
+
+            <button className="btn btn-primary" style={{ width:'100%', justifyContent:'center' }} onClick={handleAdd}>
+              ✦ Add to My Watched
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGE: BROWSE
+    // Real TMDB data: search + category tabs.
+    // Click a card → Rate & Add modal.
+    // ─────────────────────────────────────────────
+    function BrowsePage({ watchedItems, onAdd }) {
+      const CATEGORIES = ['Trending', 'Top Movies', 'Top Series', 'New Movies', 'New Series', 'Action', 'Comedy', 'Horror', 'Sci-Fi', 'Drama', 'Documentary'];
+
+      const [category, setCategory] = useState('Trending');
+      const [results, setResults] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [loadingMore, setLoadingMore] = useState(false);
+      const [nextPage, setNextPage] = useState(4);       // next page to fetch (we pre-load 1-3)
+      const [totalPages, setTotalPages] = useState(1);  // from TMDB response
+      const [searchQuery, setSearchQuery] = useState('');
+      const [searchMode, setSearchMode] = useState(false);
+      const [selectedItem, setSelectedItem] = useState(null);
+      const searchTimer = useRef(null);
+
+      const watchedIds = new Set(watchedItems.map(i => i.tmdbId).filter(Boolean));
+
+      // On category change: fetch pages 1, 2, 3 in parallel → ~60 items immediately
+      useEffect(() => {
+        if (searchMode) return;
+        setLoading(true);
+        setResults([]);
+        setNextPage(4);
+
+        // Fetch pages 1–3 in parallel for all categories (~60 items upfront)
+        const pagesToFetch = [1, 2, 3];
+
+        Promise.all(pagesToFetch.map(p => fetchCategory(category, p)))
+          .then(pages => {
+            // Deduplicate by tmdbId across pages
+            const seen = new Set();
+            const merged = [];
+            for (const page of pages) {
+              for (const item of page.results) {
+                if (!seen.has(item.tmdbId)) { seen.add(item.tmdbId); merged.push(item); }
+              }
+            }
+            setResults(merged);
+            setTotalPages(pages[0].totalPages);
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      }, [category, searchMode]);
+
+      // Append next page when user clicks Load More
+      const handleLoadMore = () => {
+        if (loadingMore || nextPage > totalPages) return;
+        setLoadingMore(true);
+        fetchCategory(category, nextPage)
+          .then(page => {
+            setResults(prev => {
+              const seen = new Set(prev.map(i => i.tmdbId));
+              const fresh = page.results.filter(i => !seen.has(i.tmdbId));
+              return [...prev, ...fresh];
+            });
+            setNextPage(p => p + 1);
+            setLoadingMore(false);
+          })
+          .catch(() => setLoadingMore(false));
+      };
+
+      // Debounced search
+      const handleSearchChange = (val) => {
+        setSearchQuery(val);
+        clearTimeout(searchTimer.current);
+        if (!val.trim()) { setSearchMode(false); return; }
+        setSearchMode(true);
+        setLoading(true);
+        searchTimer.current = setTimeout(() => {
+          searchTmdb(val)
+            .then(data => { setResults(data); setLoading(false); })
+            .catch(() => setLoading(false));
+        }, 450);
+      };
+
+      const clearSearch = () => { setSearchQuery(''); setSearchMode(false); };
+
+      const hasMore = !searchMode && nextPage <= totalPages;
+
+      return (
+        <div>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title"><span>Browse</span></h1>
+              <p className="page-subtitle">
+                {!loading && results.length > 0 && !searchMode
+                  ? `${results.length} titles · page ${nextPage - 1} of ${totalPages}`
+                  : 'Discover what to watch next'
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="browse-search-bar">
+            <span className="browse-search-icon">🔍</span>
+            <input
+              className="browse-search-input"
+              placeholder="Search for a movie or show..."
+              value={searchQuery}
+              onChange={e => handleSearchChange(e.target.value)}
+            />
+            {searchMode && (
+              <button className="btn" onClick={clearSearch} style={{ borderRadius:'100px', padding:'8px 16px' }}>Clear</button>
+            )}
+          </div>
+
+          {/* Category tabs */}
+          {!searchMode && (
+            <div className="browse-tabs">
+              {CATEGORIES.map(c => (
+                <button key={c} className={`browse-tab ${category === c ? 'active' : ''}`} onClick={() => setCategory(c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {searchMode && searchQuery && (
+            <div className="section-label" style={{ marginBottom:'1.25rem' }}>
+              Results for "{searchQuery}"
+            </div>
+          )}
+
+          {/* Grid */}
+          {loading ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:'4rem', gap:'12px', color:'var(--c-muted)', alignItems:'center' }}>
+              <div className="spinner" />
+              <span style={{ fontSize:'0.9rem' }}>Fetching from TMDB...</span>
+            </div>
+          ) : results.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'4rem', color:'var(--c-muted)' }}>
+              <div style={{ fontSize:'3rem', marginBottom:'1rem' }}>🎬</div>
+              <p>{searchMode ? 'No results found. Try a different search.' : 'Nothing loaded. Check your connection.'}</p>
+            </div>
+          ) : (
+            <>
+              <div className="tmdb-grid">
+                {results.map(item => {
+                  const isWatched = watchedIds.has(item.tmdbId);
+                  return (
+                    <div className="tmdb-card" key={item.tmdbId} onClick={() => setSelectedItem(item)}>
+                      {item.poster
+                        ? <img src={item.poster} alt={item.title} className="tmdb-poster" loading="lazy" />
+                        : <div className="tmdb-poster-placeholder">{GENRE_EMOJI[item.genre] || '🎞'}</div>
+                      }
+                      {isWatched && <div className="watched-badge">✓ Watched</div>}
+                      <div className="tmdb-card-body">
+                        <div className="tmdb-card-title" title={item.title}>{item.title}</div>
+                        <div className="tmdb-card-meta">
+                          <span>{item.year || '—'}</span>
+                          {item.tmdbRating && <><span>·</span><span className="tmdb-rating">★ {item.tmdbRating}</span></>}
+                        </div>
+                      </div>
+                      <div className="tmdb-card-hover">
+                        <button className="tmdb-add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>
+                          {isWatched ? '✓ Rate again' : '+ Add to Watched'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Load More button — only shown for category browsing, not search */}
+              {hasMore && (
+                <div style={{ textAlign:'center', marginTop:'2.5rem', paddingBottom:'1rem' }}>
+                  <button
+                    className="btn"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    style={{ padding:'12px 32px', borderRadius:'100px', fontSize:'0.875rem', gap:'10px' }}
+                  >
+                    {loadingMore
+                      ? <><div className="spinner" style={{ width:'14px', height:'14px', borderWidth:'2px' }} /> Loading...</>
+                      : `Load more  ·  page ${nextPage} of ${totalPages}`
+                    }
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {selectedItem && (
+            <RateModal
+              tmdbItem={selectedItem}
+              alreadyWatched={watchedIds.has(selectedItem.tmdbId)}
+              onClose={() => setSelectedItem(null)}
+              onAdd={(item) => { onAdd(item); setSelectedItem(null); }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGE: DASHBOARD (Home)
+    // ─────────────────────────────────────────────
+    function DashboardPage({ items, onAdd, onNavigate, userName }) {
+      const recentItems = [...items].sort((a,b) => new Date(b.dateWatched) - new Date(a.dateWatched)).slice(0,3);
+      const avgScore = items.length > 0
+        ? Math.round(items.reduce((s,i) => s + computeVibeScore(i.vibes), 0) / items.length)
+        : 0;
+
+      // Top mood overall
+      const moodTotals = {};
+      items.forEach(i => i.moods.forEach(m => { moodTotals[m] = (moodTotals[m] || 0) + 1; }));
+      const topMoodId = Object.entries(moodTotals).sort((a,b) => b[1]-a[1])[0]?.[0];
+      const topMood = MOODS.find(m => m.id === topMoodId);
+
+      const moviesCount = items.filter(i => i.type === 'Movie').length;
+      const seriesCount = items.filter(i => i.type !== 'Movie').length;
+
+      return (
+        <div>
+          <div className="page-header" style={{ marginBottom:'2rem' }}>
+            <div>
+              <h1 className="page-title" style={{ fontSize:'2.6rem' }}>
+                Good evening,<br />
+                <span>{userName || 'Cinephile'}.</span>
+              </h1>
+              <p className="page-subtitle" style={{ marginTop:'8px' }}>What are you watching tonight?</p>
+            </div>
+            <button className="btn btn-oracle" onClick={() => onNavigate('discover')}>
+              ✦ What should I watch?
+            </button>
+          </div>
+
+          {/* Stats Row */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-label">Titles Watched</div>
+              <div className="stat-value">{items.length}</div>
+              <div className="stat-sub">{moviesCount} films · {seriesCount} series</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Avg Vibe Score</div>
+              <div className="stat-value">{avgScore || '—'}</div>
+              <div className="stat-sub">out of 100</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Top Mood</div>
+              <div className="stat-value" style={{ fontSize:'1.6rem' }}>
+                {topMood ? `${topMood.emoji} ${topMood.label}` : '—'}
+              </div>
+              <div className="stat-sub">most frequent tag</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Universe Status</div>
+              <div className="stat-value" style={{ fontSize:'1.2rem', paddingTop:'6px' }}>
+                {items.length < 3 ? 'Just beginning' : items.length < 8 ? 'Growing' : items.length < 15 ? 'Expanding' : 'Vast'}
+              </div>
+              <div className="stat-sub">keep watching</div>
+            </div>
+          </div>
+
+          {/* Oracle CTA */}
+          <div className="oracle-section">
+            <div className="oracle-title">The Oracle awaits ✦</div>
+            <p className="oracle-sub">Tell it your mood and it'll pull real recommendations live from TMDB.</p>
+            <button className="btn btn-oracle" onClick={() => onNavigate('discover')}>Consult the Oracle →</button>
+          </div>
+
+          {/* Recent watches */}
+          {recentItems.length > 0 && (
+            <>
+              <div className="section-label">Recently Watched</div>
+              <div className="content-grid" style={{ gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                {recentItems.map(item => (
+                  <div className="content-card" key={item.id} style={{ cursor:'default' }}>
+                    <div className="card-poster" style={{ height:'120px', background:'var(--c-surface2)' }}>
+                      <span style={{ fontSize:'3rem' }}>{GENRE_EMOJI[item.genre] || '🎞'}</span>
+                    </div>
+                    <div className="card-body">
+                      <div className="card-title" style={{ fontSize:'1rem' }}>{item.title}</div>
+                      <div className="card-meta">
+                        <span>{item.genre}</span>
+                        <span className="card-meta-dot" />
+                        <span>{item.dateWatched}</span>
+                      </div>
+                      <div className="vibe-display">
+                        <div className="vibe-bar">
+                          <div className="vibe-fill" style={{ width:`${computeVibeScore(item.vibes)}%` }} />
+                        </div>
+                        <span className="vibe-score">{computeVibeScore(item.vibes)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {items.length === 0 && (
+            <div style={{ textAlign:'center', padding:'3rem', color:'var(--c-muted)' }}>
+              <div style={{ fontSize:'3.5rem', marginBottom:'1rem' }}>🌌</div>
+              <h3 style={{ fontFamily:'var(--font-display)', fontStyle:'italic', marginBottom:'0.5rem', color:'var(--c-text)' }}>
+                Your universe is empty
+              </h3>
+              <p style={{ marginBottom:'1.5rem' }}>Start building your collection</p>
+              <button className="btn btn-primary" onClick={onAdd}>+ Add your first title</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // MAIN APP — auth-aware
+    // ─────────────────────────────────────────────
+    function App() {
+      // ── Auth state ──
+      // On mount, check sessionStorage for an existing session
+      const [currentUser, setCurrentUser] = useState(() => loadSession());
+
+      // ── App state (scoped to current user) ──
+      const [page, setPage] = useState('home');
+      const [items, setItems] = useState([]);
+      const { toasts, addToast } = useToasts();
+
+      // Load this user's watchlist whenever the logged-in user changes
+      useEffect(() => {
+        if (!currentUser) { setItems([]); return; }
+        const key = userDataKey(currentUser.userId);
+        try {
+          const saved = localStorage.getItem(key);
+          setItems(saved ? JSON.parse(saved) : []);
+        } catch { setItems([]); }
+        // Reset to home page on login
+        setPage('home');
+      }, [currentUser?.userId]);
+
+      // Persist this user's watchlist on every change
+      useEffect(() => {
+        if (!currentUser) return;
+        localStorage.setItem(userDataKey(currentUser.userId), JSON.stringify(items));
+      }, [items, currentUser?.userId]);
+
+      // ── Auth handlers ──
+      const handleAuth = (user) => {
+        // user from registerUser/signInUser has shape { id, email, name, ... }
+        // session shape uses userId for the key
+        const session = { userId: user.id, email: user.email, name: user.name };
+        setCurrentUser(session);
+      };
+
+      const handleSignOut = () => {
+        clearSession();
+        setCurrentUser(null);
+        setItems([]);
+        setPage('home');
+        addToast('Signed out. See you next time ✦');
+      };
+
+      // ── Show auth screen if not logged in ──
+      if (!currentUser) {
+        return (
+          <>
+            <AuthScreen onAuth={handleAuth} />
+            <div className="toast-container">
+              {toasts.map(t => <div key={t.id} className="toast">{t.msg}</div>)}
+            </div>
+          </>
+        );
+      }
+
+      // ── Logged-in app ──
+      const handleAdd = (item) => {
+        setItems(prev => [item, ...prev]);
+        addToast(`✦ "${item.title}" added to your universe`);
+      };
+
+      const handleDelete = (id) => {
+        const item = items.find(i => i.id === id);
+        setItems(prev => prev.filter(i => i.id !== id));
+        addToast(`"${item?.title}" removed`);
+      };
+
+      const profile = derivePersonality(items);
+      const initials = getInitials(currentUser.name, currentUser.email);
+
+      const NAV = [
+        { id: 'home',        icon: '⌂', label: 'Dashboard' },
+        { id: 'browse',      icon: '◎', label: 'Browse' },
+        { id: 'library',     icon: '◈', label: 'My Watched' },
+        { id: 'discover',    icon: '✦', label: 'The Oracle' },
+        { id: 'personality', icon: '◆', label: 'My Profile' },
+      ];
+
+      return (
+        <>
+          <div className="app-shell">
+            {/* Sidebar */}
+            <aside className="sidebar">
+              <div>
+                <div className="logo">REEL</div>
+                <div className="logo-sub">Your Cinematic Universe</div>
+              </div>
+
+              <nav className="nav-section">
+                <label>Navigation</label>
+                {NAV.map(n => (
+                  <button key={n.id} className={`nav-btn ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
+                    <span className="icon">{n.icon}</span>
+                    {n.label}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="nav-section">
+                <label>Quick Add</label>
+                <button className="nav-btn" onClick={() => setShowAddModal(true)}>
+                  <span className="icon">+</span>
+                  Add Title
+                </button>
+              </div>
+
+              {/* Personality badge */}
+              {profile && (
+                <div className="personality-badge">
+                  <div className="label">Your Archetype</div>
+                  <div className="type">{profile.emoji} {profile.type}</div>
+                  <div className="desc">{profile.tagline}</div>
+                </div>
+              )}
+
+              {/* Signed-in user + sign out */}
+              <div style={{ marginTop:'auto' }}>
+                <div className="sidebar-user">
+                  <div className="user-avatar">{initials}</div>
+                  <div className="user-info">
+                    <div className="user-name">{currentUser.name}</div>
+                    <div className="user-email">{currentUser.email}</div>
+                  </div>
+                  <button className="sign-out-btn" onClick={handleSignOut} title="Sign out">↪</button>
+                </div>
+              </div>
+            </aside>
+
+            {/* Main content */}
+            <main className="main">
+              {page === 'home' && (
+                <DashboardPage
+                  items={items}
+                  onAdd={() => setPage('browse')}
+                  onNavigate={setPage}
+                  userName={currentUser.name}
+                />
+              )}
+              {page === 'browse' && (
+                <BrowsePage watchedItems={items} onAdd={handleAdd} />
+              )}
+              {page === 'library' && (
+                <LibraryPage
+                  items={items}
+                  onDelete={handleDelete}
+                  onAdd={() => setPage('browse')}
+                />
+              )}
+              {page === 'discover' && <DiscoverPage items={items} onAdd={handleAdd} />}
+              {page === 'personality' && <PersonalityPage items={items} />}
+            </main>
+          </div>
+
+          <div className="toast-container">
+            {toasts.map(t => <div key={t.id} className="toast">{t.msg}</div>)}
+          </div>
+        </>
+      );
+    }
+
+    // Mount
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
