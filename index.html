@@ -36,6 +36,114 @@
     body[data-mood="romantic"]    { --c-accent:#f28bca; --c-accent2:#ffb3d1; --c-glow:rgba(242,139,202,0.15); }
     body[data-mood="late-night"]  { --c-accent:#9d4edd; --c-accent2:#5c4033; --c-glow:rgba(157,78,221,0.2); }
 
+    /* ── Preset themes — override accent/glow when mood-reactive is OFF ──
+       data-theme is set on <body> and only applies when data-mood-reactive="off" */
+    body[data-mood-reactive="off"][data-theme="midnight"]
+      { --c-accent:#8b7cf8; --c-accent2:#f28bca; --c-glow:rgba(139,124,248,0.15); }
+    body[data-mood-reactive="off"][data-theme="neon"]
+      { --c-accent:#39ff14; --c-accent2:#00e5ff; --c-glow:rgba(57,255,20,0.12); }
+    body[data-mood-reactive="off"][data-theme="aurora"]
+      { --c-accent:#f72585; --c-accent2:#7209b7; --c-glow:rgba(247,37,133,0.15); }
+    body[data-mood-reactive="off"][data-theme="ocean"]
+      { --c-accent:#0096c7; --c-accent2:#48cae4; --c-glow:rgba(0,150,199,0.15); }
+    body[data-mood-reactive="off"][data-theme="ember"]
+      { --c-accent:#ff6b35; --c-accent2:#ffd166; --c-glow:rgba(255,107,53,0.15); }
+    body[data-mood-reactive="off"][data-theme="slate"]
+      { --c-accent:#94a3b8; --c-accent2:#cbd5e1; --c-glow:rgba(148,163,184,0.12); }
+    body[data-mood-reactive="off"][data-theme="gold"]
+      { --c-accent:#f4c542; --c-accent2:#e8a419; --c-glow:rgba(244,197,66,0.15); }
+    body[data-mood-reactive="off"][data-theme="rose"]
+      { --c-accent:#fb7185; --c-accent2:#fda4af; --c-glow:rgba(251,113,133,0.15); }
+
+    /* ── Theme panel drawer ── */
+    .theme-panel-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: transparent;
+    }
+    .theme-panel {
+      position: fixed;
+      bottom: 5rem;
+      left: 1rem;
+      width: 240px;
+      background: var(--c-surface);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      z-index: 151;
+      animation: slideUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    }
+    .theme-panel-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--c-muted);
+      margin-bottom: 0.75rem;
+    }
+    /* Mood-reactive toggle row */
+    .theme-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--c-border);
+      margin-bottom: 0.75rem;
+    }
+    .theme-toggle-label { font-size: 0.82rem; color: var(--c-text); }
+    .theme-toggle-sub   { font-size: 0.68rem; color: var(--c-muted); }
+    /* Custom pill toggle */
+    .pill-toggle {
+      width: 36px; height: 20px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.25s ease;
+      flex-shrink: 0;
+    }
+    .pill-toggle.on  { background: var(--c-accent); }
+    .pill-toggle.off { background: rgba(255,255,255,0.12); }
+    .pill-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left 0.2s ease;
+    }
+    .pill-toggle.on::after  { left: 18px; }
+    .pill-toggle.off::after { left: 2px; }
+    /* Preset swatch grid */
+    .theme-swatches {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 0.25rem;
+    }
+    .theme-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .theme-swatch:hover { opacity: 1; transform: scale(1.05); }
+    .theme-swatch.active { opacity: 1; }
+    .swatch-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease;
+    }
+    .theme-swatch.active .swatch-dot { border-color: var(--c-text); }
+    .swatch-label { font-size: 0.62rem; color: var(--c-muted); text-align: center; }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -1832,17 +1940,17 @@
     // ─────────────────────────────────────────────
     // PAGE: DISCOVER (Oracle + Recommendations)
     // ─────────────────────────────────────────────
-    function DiscoverPage({ items, onAdd }) {
+    function DiscoverPage({ items, onAdd, moodReactive }) {
       const [currentMood, setCurrentMood] = useState('hype');
       const [recs, setRecs] = useState([]);
       const [loading, setLoading] = useState(false);
       const [hasSearched, setHasSearched] = useState(false);
       const [selectedItem, setSelectedItem] = useState(null);
 
-      // Apply mood to body for theme shift
+      // Only shift the theme colour when mood-reactive mode is enabled
       useEffect(() => {
-        document.body.setAttribute('data-mood', currentMood);
-      }, [currentMood]);
+        if (moodReactive) document.body.setAttribute('data-mood', currentMood);
+      }, [currentMood, moodReactive]);
 
       // Now async — fetches real TMDB data
       const handleOracle = async () => {
@@ -2599,17 +2707,92 @@
     }
 
     // ─────────────────────────────────────────────
+    // THEME SYSTEM
+    // ─────────────────────────────────────────────
+
+    const THEMES = [
+      { id: 'midnight', label: 'Midnight', color1: '#8b7cf8', color2: '#f28bca' },
+      { id: 'aurora',   label: 'Aurora',   color1: '#f72585', color2: '#7209b7' },
+      { id: 'ocean',    label: 'Ocean',    color1: '#0096c7', color2: '#48cae4' },
+      { id: 'ember',    label: 'Ember',    color1: '#ff6b35', color2: '#ffd166' },
+      { id: 'neon',     label: 'Neon',     color1: '#39ff14', color2: '#00e5ff' },
+      { id: 'rose',     label: 'Rose',     color1: '#fb7185', color2: '#fda4af' },
+      { id: 'gold',     label: 'Gold',     color1: '#f4c542', color2: '#e8a419' },
+      { id: 'slate',    label: 'Slate',    color1: '#94a3b8', color2: '#cbd5e1' },
+    ];
+
+    // Apply theme to <body> — called on mount and whenever theme/moodReactive changes
+    function applyTheme(theme, moodReactive) {
+      document.body.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-mood-reactive', moodReactive ? 'on' : 'off');
+    }
+
+    // ─────────────────────────────────────────────
+    // THEME PANEL COMPONENT
+    // Floating panel above the cog button in sidebar
+    // ─────────────────────────────────────────────
+    function ThemePanel({ theme, moodReactive, onThemeChange, onMoodReactiveChange, onClose }) {
+      return (
+        <>
+          <div className="theme-panel-backdrop" onClick={onClose} />
+          <div className="theme-panel">
+            {/* Mood-reactive toggle */}
+            <div className="theme-toggle-row">
+              <div>
+                <div className="theme-toggle-label">Mood-reactive</div>
+                <div className="theme-toggle-sub">Theme shifts with Oracle mood</div>
+              </div>
+              <button
+                className={`pill-toggle ${moodReactive ? 'on' : 'off'}`}
+                onClick={() => onMoodReactiveChange(!moodReactive)}
+              />
+            </div>
+
+            {/* Preset swatches — disabled when mood-reactive is on */}
+            <div className="theme-panel-title">Theme</div>
+            <div className="theme-swatches" style={{ opacity: moodReactive ? 0.35 : 1, pointerEvents: moodReactive ? 'none' : 'auto' }}>
+              {THEMES.map(t => (
+                <div
+                  key={t.id}
+                  className={`theme-swatch ${theme === t.id ? 'active' : ''}`}
+                  onClick={() => onThemeChange(t.id)}
+                >
+                  <div
+                    className="swatch-dot"
+                    style={{ background: `linear-gradient(135deg, ${t.color1}, ${t.color2})` }}
+                  />
+                  <span className="swatch-label">{t.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // ─────────────────────────────────────────────
     // MAIN APP — auth-aware
     // ─────────────────────────────────────────────
     function App() {
       // ── Auth state ──
-      // On mount, check sessionStorage for an existing session
       const [currentUser, setCurrentUser] = useState(() => loadSession());
 
       // ── App state (scoped to current user) ──
       const [page, setPage] = useState('home');
       const [items, setItems] = useState([]);
       const { toasts, addToast } = useToasts();
+
+      // ── Theme state — persisted globally (not per-user) ──
+      const [theme, setTheme] = useState(() => localStorage.getItem('reel-theme') || 'midnight');
+      const [moodReactive, setMoodReactive] = useState(() => localStorage.getItem('reel-mood-reactive') !== 'false');
+      const [showThemePanel, setShowThemePanel] = useState(false);
+
+      // Apply theme to <body> on mount and whenever it changes
+      useEffect(() => {
+        applyTheme(theme, moodReactive);
+        localStorage.setItem('reel-theme', theme);
+        localStorage.setItem('reel-mood-reactive', moodReactive);
+      }, [theme, moodReactive]);
 
       // Load this user's watchlist whenever the logged-in user changes
       useEffect(() => {
@@ -2702,7 +2885,7 @@
 
               <div className="nav-section">
                 <label>Quick Add</label>
-                <button className="nav-btn" onClick={() => setShowAddModal(true)}>
+                <button className="nav-btn" onClick={() => setPage('browse')}>
                   <span className="icon">+</span>
                   Add Title
                 </button>
@@ -2718,7 +2901,20 @@
               )}
 
               {/* Signed-in user + sign out */}
-              <div style={{ marginTop:'auto' }}>
+              <div style={{ marginTop:'auto', display:'flex', flexDirection:'column', gap:'8px' }}>
+                {/* Cog / theme button */}
+                <button
+                  className="nav-btn"
+                  onClick={() => setShowThemePanel(p => !p)}
+                  style={{ color: showThemePanel ? 'var(--c-accent)' : 'var(--c-muted)' }}
+                >
+                  <span className="icon">⚙</span>
+                  Theme
+                  <span style={{ marginLeft:'auto', fontSize:'0.65rem', color:'var(--c-muted)', textTransform:'capitalize' }}>
+                    {moodReactive ? 'Reactive' : THEMES.find(t => t.id === theme)?.label}
+                  </span>
+                </button>
+
                 <div className="sidebar-user">
                   <div className="user-avatar">{initials}</div>
                   <div className="user-info">
@@ -2750,10 +2946,21 @@
                   onAdd={() => setPage('browse')}
                 />
               )}
-              {page === 'discover' && <DiscoverPage items={items} onAdd={handleAdd} />}
+              {page === 'discover' && <DiscoverPage items={items} onAdd={handleAdd} moodReactive={moodReactive} />}
               {page === 'personality' && <PersonalityPage items={items} />}
             </main>
           </div>
+
+          {/* Theme panel — rendered outside sidebar so it floats freely */}
+          {showThemePanel && (
+            <ThemePanel
+              theme={theme}
+              moodReactive={moodReactive}
+              onThemeChange={t => setTheme(t)}
+              onMoodReactiveChange={v => setMoodReactive(v)}
+              onClose={() => setShowThemePanel(false)}
+            />
+          )}
 
           <div className="toast-container">
             {toasts.map(t => <div key={t.id} className="toast">{t.msg}</div>)}
